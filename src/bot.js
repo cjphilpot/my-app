@@ -51,11 +51,11 @@ function onPayment(session) {
 // STATES
 
 function welcome(session) {
-  sendMessage(session, `Hello Token!`)
+  sendMessage(session, `Hello Green Apple!`)
 }
 
 function pong(session) {
-  sendMessage(session, `Pong`)
+  sendMessage(session, `Pong Apples`)
 }
 
 // example of how to store state on each user
