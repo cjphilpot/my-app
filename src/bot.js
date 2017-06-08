@@ -1,88 +1,132 @@
-const Bot = require('./lib/Bot')
-const SOFA = require('sofa-js')
+const SOFA = require('sofa-js');
 const Fiat = require('./lib/Fiat')
+const Bot = require('./lib/Bot');
 
-let bot = new Bot()
-
-// ROUTING
+let bot = new Bot();
 
 bot.onEvent = function(session, message) {
   switch (message.type) {
-    case 'Init':
-      welcome(session)
-      break
-    case 'Message':
-      onMessage(session, message)
-      break
-    case 'Command':
-      onCommand(session, message)
-      break
-    case 'Payment':
-      onPayment(session)
-      break
-    case 'PaymentRequest':
-      welcome(session)
-      break
+    case "Message":
+      onMessage(session, message);
+      break;
+    case "Command":
+      onCommand(session, message);
+      break;
+    case "PaymentRequest":
+      onPaymentRequest(session, message);
+      break;
   }
 }
 
 function onMessage(session, message) {
-  welcome(session)
+  //if the newTaskSet variable is triggered then save the message body to currentTask.
+  switch (session.get('newTaskState')) {
+    case 'newTaskSet':
+      session.set('savedTask', message.content.body);
+      session.reply('You entered: ' + session.get('savedTask'));
+      
+      sendEtherOptionPrompt(session, "How much do you want to pay for this task?");
+      session.set('newTaskState', ''); //reset state
+      break;
+  }
+  //if message body contains the word beg, request a payment
+  if (message.content.body.includes('cancel')) {
+    session.reply("Cancelled")
+    return
+  }
+
+  //if it contains the word ethlogo, send an image message
+  if (message.content.body.includes('ethlogo')) {
+    session.reply(SOFA.Message({
+      body: "Here is your logo",
+      attachments: [{
+        "type": "image",
+        "url": "ethereum.jpg"
+      }]
+    }))
+    return
+  }
+
+  //if it contains a known fiat currency code, send the ETH conversion
+  if (Object.keys(Fiat.rates).indexOf(message.content.body) > -1) {
+    Fiat.fetch().then((toEth) => {
+      session.reply('1 ETH is worth ' + toEth[message.content.body]() + ' ' + message.content.body)
+    })
+    return
+  }
+
+  //otherwise send a default prompt
+  sendButtonPrompt(session, "I only want to talk about my favorite color. Guess what it is!");
 }
 
-function onCommand(session, command) {
-  switch (command.content.value) {
-    case 'ping':
-      pong(session)
-      break
-    case 'count':
-      count(session)
-      break
-    case 'donate':
-      donate(session)
-      break
-    }
-}
 
-function onPayment(session) {
-  sendMessage(session, `Thanks for the payment! 🙏`)
-}
-
-// STATES
-
-function welcome(session) {
-  sendMessage(session, `Hello Green Apple!`)
-}
-
-function pong(session) {
-  sendMessage(session, `Pong Apples`)
-}
-
-// example of how to store state on each user
-function count(session) {
-  let count = (session.get('count') || 0) + 1
-  session.set('count', count)
-  sendMessage(session, `${count}`)
-}
-
-function donate(session) {
-  // request $1 USD at current exchange rates
-  Fiat.fetch().then((toEth) => {
-    session.requestEth(toEth.USD(1))
-  })
-}
-
-// HELPERS
-
-function sendMessage(session, message) {
-  let controls = [
-    {type: 'button', label: 'Ping', value: 'ping'},
-    {type: 'button', label: 'Count', value: 'count'},
-    {type: 'button', label: 'Donate', value: 'donate'}
-  ]
+function sendButtonPrompt(session, body) {
   session.reply(SOFA.Message({
-    body: message,
-    controls: controls,
-    showKeyboard: false,
-  }))
+    body:  body,
+    controls: [
+      {type: "button", label: "New Task", value: "newTask"},
+      {type: "button", label: "Green", value: "green"},
+      {type: "button", label: "Blue", value: "blue"}
+    ],
+    showKeyboard: false
+  }));
+}
+
+function sendEtherOptionPrompt(session, body) {
+  session.reply(SOFA.Message({
+    body:  body,
+    controls: [
+      {type: "button", label: "$1", value: "1"},
+      {type: "button", label: "$5", value: "5"},
+      {type: "button", label: "$10", value: "10"},
+      {type: "button", label: "$20", value: "20"}
+    ],
+    showKeyboard: false
+  }));
+}
+
+
+function onCommand(session, command, message) {
+  switch (command.content.value) {
+    case 'newTask':
+      session.reply("Enter a task you would like completed. 'cancel' to exit.");
+      session.set('newTaskState', 'newTaskSet');
+      break;
+    case '1':
+      session.reply("You pay 1");
+      //session.set('newTaskState', 'newTaskSet');
+      break;
+    case '5':
+      session.reply("You Pay 5");
+      //session.set('newTaskState', 'newTaskSet');
+      break;
+    case '10':
+      session.reply("You Pay 10");
+      //session.set('newTaskState', 'newTaskSet');
+      break;
+    case '20':
+      session.reply("You pay 20");
+      //session.set('newTaskState', 'newTaskSet');
+      break;
+  }
+
+}
+
+
+function onPaymentRequest(session, message) {
+  //fetch fiat conversion rates
+  Fiat.fetch().then((toEth) => {
+    let limit = toEth.USD(100)
+    if (message.ethValue < limit) {
+      session.sendEth(message.ethValue, (session, error, result) => {
+        if (error) { session.reply('I tried but there was an error') }
+        if (result) { session.reply('Here you go!') }
+      })
+    } else {
+      session.reply('Sorry, I have a 100 USD limit.')
+    }
+  })
+  .catch((error) => {
+    session.reply('Sorry, something went wrong while I was looking up exchange rates')
+  })
 }
