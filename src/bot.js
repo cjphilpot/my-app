@@ -6,6 +6,7 @@ let bot = new Bot();
 
 bot.onEvent = function(session, message) {
   switch (message.type) {
+<<<<<<< HEAD
     case "Message":
       onMessage(session, message);
       break;
@@ -15,6 +16,23 @@ bot.onEvent = function(session, message) {
     case "PaymentRequest":
       onPaymentRequest(session, message);
       break;
+=======
+    case 'Init':
+      welcome(session)
+      break
+    case 'Message':
+      onMessage(session, message)
+      break
+    case 'Command':
+      onCommand(session, message)
+      break
+    case 'Payment':
+      onPayment(session, message)
+      break
+    case 'PaymentRequest':
+      welcome(session)
+      break
+>>>>>>> 5c18c60df025a80904674c58d451754bc077673f
   }
 }
 
@@ -55,8 +73,31 @@ function onMessage(session, message) {
     return
   }
 
+<<<<<<< HEAD
   //otherwise send a default prompt
   sendButtonPrompt(session, "I only want to talk about my favorite color. Guess what it is!");
+=======
+function onPayment(session, message) {
+  if (message.fromAddress == session.config.paymentAddress) {
+    // handle payments sent by the bot
+    if (message.status == 'confirmed') {
+      // perform special action once the payment has been confirmed
+      // on the network
+    } else if (message.status == 'error') {
+      // oops, something went wrong with a payment we tried to send!
+    }
+  } else {
+    // handle payments sent to the bot
+    if (message.status == 'unconfirmed') {
+      // payment has been sent to the ethereum network, but is not yet confirmed
+      sendMessage(session, `Thanks for the payment! 🙏`);
+    } else if (message.status == 'confirmed') {
+      // handle when the payment is actually confirmed!
+    } else if (message.status == 'error') {
+      sendMessage(session, `There was an error with your payment!🚫`);
+    }
+  }
+>>>>>>> 5c18c60df025a80904674c58d451754bc077673f
 }
 
 
