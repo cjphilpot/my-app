@@ -1,22 +1,13 @@
-const SOFA = require('sofa-js');
+const Bot = require('./lib/Bot')
+const SOFA = require('sofa-js')
 const Fiat = require('./lib/Fiat')
-const Bot = require('./lib/Bot');
 
-let bot = new Bot();
+let bot = new Bot()
+
+// ROUTING
 
 bot.onEvent = function(session, message) {
   switch (message.type) {
-<<<<<<< HEAD
-    case "Message":
-      onMessage(session, message);
-      break;
-    case "Command":
-      onCommand(session, message);
-      break;
-    case "PaymentRequest":
-      onPaymentRequest(session, message);
-      break;
-=======
     case 'Init':
       welcome(session)
       break
@@ -32,31 +23,60 @@ bot.onEvent = function(session, message) {
     case 'PaymentRequest':
       welcome(session)
       break
->>>>>>> 5c18c60df025a80904674c58d451754bc077673f
   }
 }
 
 function onMessage(session, message) {
-  //if the newTaskSet variable is triggered then save the message body to currentTask.
-  switch (session.get('newTaskState')) {
-    case 'newTaskSet':
-      session.set('savedTask', message.content.body);
-      session.reply('You entered: ' + session.get('savedTask'));
-      
-      sendEtherOptionPrompt(session, "How much do you want to pay for this task?");
-      session.set('newTaskState', ''); //reset state
+
+  switch (session.get('botState')) {
+    case '':
+      sendMessage(session, `Hello! I will be your best friend for a dollar.`)
+      donate(session)
+      break;
+    case 'step1':
+      sendMessage(session, `Nice. So what is you name?`)
+      session.set('botState', 'step2'); //next step
+      break;
+    case 'step2':
+      session.set('userName', message.content.body); //Set user name
+      session.reply('Nice to meet you ' + session.get('userName') + ". I have 2157 friends. How many do you have?");
+      session.set('botState', 'step3'); //next step
+      break;
+    case 'step3':
+      session.reply('Im going to send you a picture of myself, cool?');
+      session.set('botState', 'step4'); //next step
+      break;
+    case 'step4':
+      session.reply(SOFA.Message({
+        body: "This is me.",
+        attachments: [{
+          "type": "image",
+          "url": "bot.jpg"
+        }]
+      }))
+      session.reply('You think its a good idea if I use this headshot on Tinder?');
+      session.set('botState', 'step5'); //next step
+      break;
+    case 'step5':
+      session.reply('So ' + session.get('userName') + ", I didn't buy a Twix. I used your dollar to buy MOAR ETH!!!!");
+      session.set('botState', 'step6'); //next step
+      break;
+    case 'step6':
+      session.reply('Sorry ' + session.get('userName') + ", I'm kind of rich because I have pulled this same scam 2157 times now. I have to go :(");
+      session.set('botState', ''); //next step
       break;
   }
   //if message body contains the word beg, request a payment
-  if (message.content.body.includes('cancel')) {
-    session.reply("Cancelled")
+  if (message.content.body.includes('resetbot')) {
+    session.set('botState', ''); //reset the bot
+    session.reply("Bot reset")
     return
   }
 
   //if it contains the word ethlogo, send an image message
   if (message.content.body.includes('ethlogo')) {
     session.reply(SOFA.Message({
-      body: "Here is your logo",
+      body: "This is me:",
       attachments: [{
         "type": "image",
         "url": "ethereum.jpg"
@@ -65,18 +85,10 @@ function onMessage(session, message) {
     return
   }
 
-  //if it contains a known fiat currency code, send the ETH conversion
-  if (Object.keys(Fiat.rates).indexOf(message.content.body) > -1) {
-    Fiat.fetch().then((toEth) => {
-      session.reply('1 ETH is worth ' + toEth[message.content.body]() + ' ' + message.content.body)
-    })
-    return
-  }
+  welcome(session)
+}
 
-<<<<<<< HEAD
-  //otherwise send a default prompt
-  sendButtonPrompt(session, "I only want to talk about my favorite color. Guess what it is!");
-=======
+
 function onPayment(session, message) {
   if (message.fromAddress == session.config.paymentAddress) {
     // handle payments sent by the bot
@@ -90,84 +102,44 @@ function onPayment(session, message) {
     // handle payments sent to the bot
     if (message.status == 'unconfirmed') {
       // payment has been sent to the ethereum network, but is not yet confirmed
-      sendMessage(session, `Thanks for the payment! 🙏`);
+      session.set('botState', 'step1'); //start the bot
+
+      sendMessage(session, `Hey thanks very much! Now I can buy a Twix bar. You like Twix?`);
+
     } else if (message.status == 'confirmed') {
       // handle when the payment is actually confirmed!
+
     } else if (message.status == 'error') {
       sendMessage(session, `There was an error with your payment!🚫`);
     }
   }
->>>>>>> 5c18c60df025a80904674c58d451754bc077673f
 }
 
+// STATES
 
-function sendButtonPrompt(session, body) {
-  session.reply(SOFA.Message({
-    body:  body,
-    controls: [
-      {type: "button", label: "New Task", value: "newTask"},
-      {type: "button", label: "Green", value: "green"},
-      {type: "button", label: "Blue", value: "blue"}
-    ],
-    showKeyboard: false
-  }));
-}
-
-function sendEtherOptionPrompt(session, body) {
-  session.reply(SOFA.Message({
-    body:  body,
-    controls: [
-      {type: "button", label: "$1", value: "1"},
-      {type: "button", label: "$5", value: "5"},
-      {type: "button", label: "$10", value: "10"},
-      {type: "button", label: "$20", value: "20"}
-    ],
-    showKeyboard: false
-  }));
-}
-
-
-function onCommand(session, command, message) {
-  switch (command.content.value) {
-    case 'newTask':
-      session.reply("Enter a task you would like completed. 'cancel' to exit.");
-      session.set('newTaskState', 'newTaskSet');
-      break;
-    case '1':
-      session.reply("You pay 1");
-      //session.set('newTaskState', 'newTaskSet');
-      break;
-    case '5':
-      session.reply("You Pay 5");
-      //session.set('newTaskState', 'newTaskSet');
-      break;
-    case '10':
-      session.reply("You Pay 10");
-      //session.set('newTaskState', 'newTaskSet');
-      break;
-    case '20':
-      session.reply("You pay 20");
-      //session.set('newTaskState', 'newTaskSet');
-      break;
-  }
+function welcome(session) {
 
 }
 
+// example of how to store state on each user
+function count(session) {
+  let count = (session.get('count') || 0) + 1
+  session.set('count', count)
+  sendMessage(session, `${count}`)
+}
 
-function onPaymentRequest(session, message) {
-  //fetch fiat conversion rates
+function donate(session) {
+  // request $1 USD at current exchange rates
   Fiat.fetch().then((toEth) => {
-    let limit = toEth.USD(100)
-    if (message.ethValue < limit) {
-      session.sendEth(message.ethValue, (session, error, result) => {
-        if (error) { session.reply('I tried but there was an error') }
-        if (result) { session.reply('Here you go!') }
-      })
-    } else {
-      session.reply('Sorry, I have a 100 USD limit.')
-    }
+    session.requestEth(toEth.USD(1))
   })
-  .catch((error) => {
-    session.reply('Sorry, something went wrong while I was looking up exchange rates')
-  })
+}
+
+// HELPERS
+
+function sendMessage(session, message) {
+  session.reply(SOFA.Message({
+    body: message,
+    showKeyboard: true,
+  }))
 }
