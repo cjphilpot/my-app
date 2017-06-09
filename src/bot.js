@@ -73,18 +73,6 @@ function onMessage(session, message) {
     return
   }
 
-  //if it contains the word ethlogo, send an image message
-  if (message.content.body.includes('ethlogo')) {
-    session.reply(SOFA.Message({
-      body: "This is me:",
-      attachments: [{
-        "type": "image",
-        "url": "ethereum.jpg"
-      }]
-    }))
-    return
-  }
-
   welcome(session)
 }
 
